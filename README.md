@@ -35,7 +35,7 @@ Hackers.Market-MVP-for-unite-defi/
 - **Smart Contracts**: Solidity, Hardhat, OpenZeppelin
 - **Frontend**: Next.js 14, wagmi, viem, RainbowKit, Tailwind CSS
 - **Backend**: Node.js, Express, PostgreSQL, Redis
-- **Blockchain**: Polygon, Ethereum, LayerZero OFT
+- **Blockchain**: Ethereum Sepolia Testnet, Base Sepolia Testnet, Etherlink Testnet
 - **Integrations**: 1inch API, Circle SDK
 
 ### 📄 License
@@ -63,20 +63,20 @@ Hackers.Market 是世界首個反脅迫 P2P 託管協議，解決了點對點交
 
 ```
 Hackers.Market-MVP-for-unite-defi/
-├── frontend/          # Next.js 14 應用程式
+├── frontend/          # Next.js 14 Web應用
 ├── backend/           # Node.js API 服務
 ├── contracts/         # 智能合約 (Solidity)
-└── assets/            # UI/UX 設計文件
+└── assets/            # UI/UX 設計檔
 ```
 
 ### 🛠️ 技術棧
 
-- **智能合約**：Solidity、Hardhat、OpenZeppelin
-- **前端**：Next.js 14、wagmi、viem、RainbowKit、Tailwind CSS
-- **後端**：Node.js、Express、PostgreSQL、Redis
-- **區塊鏈**：Polygon、Ethereum、LayerZero OFT
-- **整合**：1inch API、Circle SDK
+- **智能合約棧**：Solidity、Hardhat、OpenZeppelin
+- **前端技術棧**：Next.js 14、wagmi、viem、RainbowKit、Tailwind CSS
+- **後端技術棧**：Node.js、Express、PostgreSQL、Redis
+- **支持區塊鏈**：Ethereum Sepolia Testnet, Base Sepolia Testnet, Etherlink Testnet
+- **整合服務商**：1inch API、Circle SDK
 
-### 📄 許可證
+### 📄 開源許可證
 
 MIT 許可證
