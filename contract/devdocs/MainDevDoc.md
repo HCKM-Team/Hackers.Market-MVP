@@ -429,7 +429,7 @@ Given time constraints, we're strategically targeting the highest-value prizes w
 ## 7. Roadmap & Milestones
 
 ### 7.1 Phase 1: MVP Development (Q3 2025)
-- ETHGlobal Cannes hackathon prototype validation
+- ETHGlobal Unite-DeFi hackathon prototype validation
 - Core smart contracts deployment on Polygon
 - Basic web application with essential features
 - Security audit and penetration testing
@@ -839,7 +839,7 @@ AI驅動系統檢測可疑模式並自動干預
 ## 7. 路線圖與里程碑
 
 ### 7.1 第1階段：MVP 開發 (2025年第三季度)
-- ETHGlobal Cannes 黑客馬拉松原型驗證
+- ETHGlobal Unite-DeFi 黑客馬拉松原型驗證
 - 在 Polygon 上部署核心智能合約
 - 具有基本功能的基礎 Web 應用程式
 - 安全審計和滲透測試
