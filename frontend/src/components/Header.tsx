@@ -12,13 +12,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ThemeToggle } from "./ThemeToggle";
+import { CustomConnectBtn } from "./CustomConnectBtn";
 
 // Navigation links array to be used in both desktop and mobile menus
 const navigationLinks = [
-  { href: "#", label: "Home", active: true },
-  { href: "#", label: "Features" },
-  { href: "#", label: "Pricing" },
-  { href: "#", label: "About" },
+  { href: "#", label: "RWAs", active: true },
+  { href: "#", label: "Crypto" },
+  { href: "#", label: "NFTs" },
 ];
 
 export default function Header() {
@@ -94,7 +94,7 @@ export default function Header() {
                     <NavigationMenuLink
                       active={link.active}
                       href={link.href}
-                      className="text-muted-foreground hover:text-primary border-b-primary hover:border-b-primary data-[active]:border-b-primary h-full justify-center rounded-none border-y-2 border-transparent py-1.5 font-medium hover:bg-transparent data-[active]:bg-transparent!"
+                      className="text-foreground hover:text-primary border-b-primary hover:border-b-[#2DD4BF] data-[active]:border-b-[#2DD4BF] h-full justify-center rounded-none border-y-2 border-transparent py-1.5 font-medium hover:bg-transparent data-[active]:bg-transparent!"
                     >
                       {link.label}
                     </NavigationMenuLink>
@@ -107,12 +107,10 @@ export default function Header() {
         {/* Right side */}
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Button asChild variant="ghost" size="sm" className="text-sm">
-            <a href="#">Sign In</a>
-          </Button>
-          <Button asChild size="sm" className="text-sm">
-            <a href="#">Get Started</a>
-          </Button>
+          {/* <Button asChild size="sm" className="text-sm">
+            <a href="#">Connect Wallet</a>
+          </Button> */}
+          <CustomConnectBtn variant="ghost" size="sm" />
         </div>
       </div>
     </header>
