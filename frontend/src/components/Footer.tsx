@@ -5,7 +5,7 @@ import { FaXTwitter } from "react-icons/fa6";
 
 export default function Footer() {
   return (
-    <footer className="flex flex-col items-start gap-6 bg-background px-[120px] py-12">
+    <footer className="flex flex-col items-start gap-6 border-t-1 border-[#2DD4BF] bg-background px-[120px] py-12">
       <div className="flex items-center justify-between self-stretch">
         <Image
           src="/images/hckm-logo.png"
