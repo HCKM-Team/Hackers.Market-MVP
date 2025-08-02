@@ -14,6 +14,7 @@ import {
 const etherlink = {
   id: 42793,
   name: "Etherlink",
+  iconUrl: "/images/etherlink.jpeg",
   network: "etherlink",
   nativeCurrency: {
     decimals: 18,
