@@ -59,15 +59,14 @@ describe("Edge Cases and Stress Tests", function () {
     });
 
     it("Should handle very large trade amounts", async function () {
-      // Use a large but reasonable amount (avoid overflow)
-      const largeAmount = ethers.parseEther("1000000"); // 1M ETH
+      // Use a large but realistic amount for testing
+      const largeAmount = ethers.parseEther("1000"); // 1000 ETH
       
-      // Only test if the buyer has enough ETH (skip in CI/low-balance environments)
-      const buyerBalance = await ethers.provider.getBalance(buyer.address);
-      if (buyerBalance < largeAmount) {
-        this.skip();
-        return;
-      }
+      // Fund the buyer account for this test
+      await owner.sendTransaction({
+        to: buyer.address,
+        value: largeAmount + ethers.parseEther("1") // Extra for gas
+      });
 
       const params = {
         buyer: buyer.address,
@@ -130,9 +129,28 @@ describe("Edge Cases and Stress Tests", function () {
 
   describe("Boundary Condition Testing", function () {
     it("Should handle time-lock expiry at exact boundary", async function () {
-      // Skip this test as exact timing boundary testing depends on 
-      // specific implementation details that may vary
-      this.skip();
+      const { escrow } = await setup.createAndFundEscrow();
+      
+      // Confirm receipt to start time-lock
+      await escrow.connect(seller).confirmReceipt();
+      
+      const escrowInfo = await escrow.getEscrowInfo();
+      const timeLockEnd = Number(escrowInfo.timeLockEnd);
+      const currentTime = await setup.getLatestTimestamp();
+      const timeToWait = timeLockEnd - currentTime;
+      
+      // Try to release funds just before expiry (should fail)
+      await setup.timeTravel(timeToWait - 2); // 2 seconds before expiry
+      await expect(
+        escrow.releaseFunds()
+      ).to.be.revertedWithCustomError(escrow, "TimeLockActive");
+      
+      // Time travel to just after expiry
+      await setup.timeTravel(5); // 3 seconds past expiry
+      
+      // Should now work
+      await escrow.releaseFunds();
+      await setup.assertEscrowState(escrow, ESCROW_STATES.Released);
     });
 
     it("Should handle state transitions at exact timing boundaries", async function () {
@@ -323,15 +341,75 @@ describe("Edge Cases and Stress Tests", function () {
 
   describe("Error Recovery and Resilience", function () {
     it("Should recover gracefully from module failures", async function () {
-      // Skip this test as setModule with zero address may not be allowed
-      // in the current implementation
-      this.skip();
+      // Create and fund escrow with modules available
+      const { escrow } = await setup.createAndFundEscrow();
+      
+      // Confirm receipt to get into locked state
+      await escrow.connect(seller).confirmReceipt();
+      await setup.assertEscrowState(escrow, ESCROW_STATES.Locked);
+      
+      // Simulate module failure by removing TimeLock module
+      await factory.connect(owner).setModule("TimeLock", ethers.ZeroAddress);
+      
+      // Create new escrow - should still work with fallback behavior
+      const { escrow: newEscrow } = await setup.createAndFundEscrow();
+      
+      // Should use default time-lock behavior when module unavailable
+      await newEscrow.connect(seller).confirmReceipt();
+      await setup.assertEscrowState(newEscrow, ESCROW_STATES.Locked);
+      
+      // Verify fallback duration (24 hours default)
+      const escrowInfo = await newEscrow.getEscrowInfo();
+      const currentTime = await setup.getLatestTimestamp();
+      const actualDuration = Number(escrowInfo.timeLockEnd) - currentTime;
+      
+      expect(Number(actualDuration)).to.be.closeTo(24 * TIME.HOUR, 5 * 60);
+      
+      // Emergency should still work without emergency module
+      await factory.connect(owner).setModule("Emergency", ethers.ZeroAddress);
+      
+      const { escrow: emergencyEscrow } = await setup.createAndFundEscrow();
+      
+      // Emergency stop should work with default behavior
+      await emergencyEscrow.connect(buyer).emergencyStop(setup.config.panicCode);
+      await setup.assertEscrowState(emergencyEscrow, ESCROW_STATES.Emergency);
+      
+      // Should use default 48-hour extension
+      const emergencyInfo = await emergencyEscrow.getEscrowInfo();
+      const emergencyCurrentTime = await setup.getLatestTimestamp();
+      const emergencyDuration = Number(emergencyInfo.timeLockEnd) - emergencyCurrentTime;
+      
+      expect(Number(emergencyDuration)).to.be.closeTo(48 * TIME.HOUR, 5 * 60);
     });
 
     it("Should handle emergency module unavailability", async function () {
-      // Skip this test as setModule with zero address may not be allowed
-      // in the current implementation
-      this.skip();
+      // Remove emergency module first
+      await factory.connect(owner).setModule("Emergency", ethers.ZeroAddress);
+      
+      // Create and fund escrow without emergency module
+      const { escrow } = await setup.createAndFundEscrow();
+      
+      // Emergency functionality should still work with fallback behavior
+      await escrow.connect(buyer).emergencyStop(setup.config.panicCode);
+      await setup.assertEscrowState(escrow, ESCROW_STATES.Emergency);
+      
+      // Should use default emergency extension (48 hours)
+      const remaining = await escrow.getTimeLockRemaining();
+      expect(Number(remaining)).to.be.closeTo(48 * TIME.HOUR, 5 * 60);
+      
+      // Emergency should not be tracked in module (module is unavailable)
+      // But escrow should still enter emergency state
+      const emergencyData = await escrow.getEmergencyData();
+      expect(emergencyData.activator).to.equal(buyer.address);
+      expect(Number(emergencyData.lockExtension)).to.be.closeTo(48 * TIME.HOUR, 5 * 60);
+      
+      // Create another escrow to test that emergency works multiple times
+      // without module tracking (no cooldown enforcement)
+      const { escrow: escrow2 } = await setup.createAndFundEscrow();
+      
+      // Should work immediately since no module is tracking cooldowns
+      await escrow2.connect(buyer).emergencyStop(setup.config.panicCode);
+      await setup.assertEscrowState(escrow2, ESCROW_STATES.Emergency);
     });
 
     it("Should handle network congestion gracefully", async function () {

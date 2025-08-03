@@ -314,15 +314,48 @@ describe("Security Scenarios - Functional Tests", function () {
 
   describe("Emergency System Security", function () {
     it("Should enforce emergency cooldown periods", async function () {
-      // Skip this test as the emergency cooldown behavior depends on 
-      // specific implementation details that may vary
-      this.skip();
+      // Create and fund first escrow
+      const { escrow: escrow1 } = await setup.createAndFundEscrow();
+      
+      // Activate emergency on first escrow
+      await escrow1.connect(buyer).emergencyStop(setup.config.panicCode);
+      await setup.assertEscrowState(escrow1, ESCROW_STATES.Emergency);
+      
+      // Create second escrow immediately
+      const { escrow: escrow2 } = await setup.createAndFundEscrow();
+      
+      // Should fail due to cooldown (1 hour default)
+      await expect(
+        escrow2.connect(buyer).emergencyStop(setup.config.panicCode)
+      ).to.be.revertedWithCustomError(emergency, "CooldownPeriodActive");
+      
+      // Fast forward past cooldown period
+      await setup.timeTravel(TIME.HOUR + 60); // 1 hour + 1 minute
+      
+      // Should now work
+      await escrow2.connect(buyer).emergencyStop(setup.config.panicCode);
+      await setup.assertEscrowState(escrow2, ESCROW_STATES.Emergency);
     });
 
     it("Should enforce daily emergency limits", async function () {
-      // Skip this test as the emergency limit behavior depends on 
-      // specific implementation details that may vary
-      this.skip();
+      const emergency = setup.contracts.emergency;
+      const config = await emergency.getConfig();
+      const maxActivations = Number(config.maxActivations);
+      
+      // Use up all allowed activations
+      for (let i = 0; i < maxActivations; i++) {
+        const { escrow } = await setup.createAndFundEscrow();
+        await escrow.connect(buyer).emergencyStop(setup.config.panicCode);
+        
+        // Wait for cooldown between activations
+        await setup.timeTravel(TIME.HOUR + 60);
+      }
+      
+      // Next activation should fail due to daily limit
+      const { escrow: finalEscrow } = await setup.createAndFundEscrow();
+      await expect(
+        finalEscrow.connect(buyer).emergencyStop(setup.config.panicCode)
+      ).to.be.revertedWithCustomError(emergency, "MaxActivationsReached");
     });
 
     it("Should prevent emergency hash manipulation", async function () {
