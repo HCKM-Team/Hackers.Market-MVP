@@ -44,8 +44,14 @@ contract EscrowFactory is
     /// @dev Total number of escrows created
     uint256 private _totalEscrows;
 
-    /// @dev Storage gap for future variables (50 - 6 used slots = 44)
-    uint256[44] private __gap;
+    /// @dev Creation fee required to deploy new escrow (default: 0.0008 ETH)
+    uint256 private _creationFee;
+
+    /// @dev Accumulated fees from escrow creations
+    uint256 private _accumulatedFees;
+
+    /// @dev Storage gap for future variables (50 - 8 used slots = 42)
+    uint256[42] private __gap;
 
     /**
      * @dev Initialize the factory contract
@@ -72,6 +78,7 @@ contract EscrowFactory is
         __ReentrancyGuard_init();
 
         _escrowImplementation = escrowImplementation_;
+        _creationFee = 0.0008 ether; // Default fee: 0.0008 ETH
     }
 
     /**
@@ -81,11 +88,18 @@ contract EscrowFactory is
      */
     function createEscrow(CreateEscrowParams calldata params) 
         external 
+        payable
         override 
         whenNotPaused 
         nonReentrant
         returns (address escrowAddress) 
     {
+        // Check creation fee
+        if (msg.value < _creationFee) revert InsufficientFee();
+        
+        // Track accumulated fees
+        _accumulatedFees += msg.value;
+        
         // Validate parameters
         if (params.buyer == address(0)) revert InvalidBuyer();
         if (params.buyer == msg.sender) revert InvalidBuyer(); // Seller can't be buyer
@@ -305,6 +319,56 @@ contract EscrowFactory is
     }
 
     /**
+     * @dev Update creation fee (owner only)
+     * @param newFee New creation fee in wei
+     */
+    function updateCreationFee(uint256 newFee) 
+        external 
+        onlyOwner 
+    {
+        uint256 oldFee = _creationFee;
+        _creationFee = newFee;
+        emit CreationFeeUpdated(oldFee, newFee);
+    }
+
+    /**
+     * @dev Withdraw accumulated fees (owner only)
+     * @param recipient Address to receive fees
+     * @param amount Amount to withdraw
+     */
+    function withdrawFees(address recipient, uint256 amount) 
+        external 
+        onlyOwner 
+        nonReentrant
+    {
+        if (recipient == address(0)) revert InvalidBuyer();
+        if (amount > _accumulatedFees) revert InvalidAmount();
+        
+        _accumulatedFees -= amount;
+        
+        (bool success, ) = recipient.call{value: amount}("");
+        if (!success) revert TransferFailed();
+        
+        emit FeesWithdrawn(recipient, amount);
+    }
+
+    /**
+     * @dev Get current creation fee
+     * @return fee Creation fee in wei
+     */
+    function getCreationFee() external view returns (uint256) {
+        return _creationFee;
+    }
+
+    /**
+     * @dev Get accumulated fees
+     * @return balance Total fees collected
+     */
+    function getAccumulatedFees() external view returns (uint256) {
+        return _accumulatedFees;
+    }
+
+    /**
      * @dev Authorize upgrade (required by UUPS)
      * @param newImplementation Address of new implementation
      */
@@ -319,6 +383,6 @@ contract EscrowFactory is
      * @return version Current version string
      */
     function version() external pure returns (string memory) {
-        return "1.0.0";
+        return "1.1.0"; // Updated version for fee feature
     }
 }

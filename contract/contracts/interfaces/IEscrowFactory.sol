@@ -32,6 +32,8 @@ interface IEscrowFactory is IEscrowStructs {
 
     event FactoryPaused(address indexed admin);
     event FactoryUnpaused(address indexed admin);
+    event CreationFeeUpdated(uint256 oldFee, uint256 newFee);
+    event FeesWithdrawn(address indexed recipient, uint256 amount);
 
     /**
      * @dev Errors
@@ -46,14 +48,17 @@ interface IEscrowFactory is IEscrowStructs {
     error ModuleNotSet();
     error InvalidContract();
     error InitializationFailed();
+    error InsufficientFee();
+    error TransferFailed();
 
     /**
-     * @dev Create a new escrow contract
+     * @dev Create a new escrow contract (requires payment of creation fee)
      * @param params Escrow creation parameters
      * @return escrowAddress Address of the created escrow contract
      */
     function createEscrow(CreateEscrowParams calldata params) 
         external 
+        payable
         returns (address escrowAddress);
 
     /**
@@ -143,6 +148,18 @@ interface IEscrowFactory is IEscrowStructs {
      */
     function version() external pure returns (string memory);
 
+    /**
+     * @dev Get current creation fee
+     * @return fee Creation fee in wei
+     */
+    function getCreationFee() external view returns (uint256 fee);
+
+    /**
+     * @dev Get accumulated fees
+     * @return balance Total fees collected
+     */
+    function getAccumulatedFees() external view returns (uint256 balance);
+
     // === ADMIN FUNCTIONS ===
 
     /**
@@ -167,4 +184,17 @@ interface IEscrowFactory is IEscrowStructs {
      * @dev Unpause the factory (owner only)
      */
     function unpause() external;
+
+    /**
+     * @dev Update creation fee (owner only)
+     * @param newFee New creation fee in wei
+     */
+    function updateCreationFee(uint256 newFee) external;
+
+    /**
+     * @dev Withdraw accumulated fees (owner only)
+     * @param recipient Address to receive fees
+     * @param amount Amount to withdraw
+     */
+    function withdrawFees(address recipient, uint256 amount) external;
 }

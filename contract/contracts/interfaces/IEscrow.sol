@@ -31,6 +31,11 @@ interface IEscrow is IEscrowStructs {
     error InvalidEmergencyHash();
     error InvalidPanicCode();
     error EscrowExpired();
+    error InvalidBuyer();
+    error InvalidAmount();
+    error InvalidDescription();
+    error InvalidContract();
+    error TransferFailed();
 
     /**
      * @dev Initialize the escrow contract (called by factory)
