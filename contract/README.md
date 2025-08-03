@@ -2,7 +2,7 @@
 
 Revolutionary Anti-Coercion P2P Escrow Protocol for Physical Safety in Decentralized Trading
 
-## 1. Overview
+## 1. 🚀 Overview
 
 HCKM (Hackers.Market) implements the world's first anti-coercion P2P escrow protocol, addressing a critical vulnerability in peer-to-peer trading: **physical coercion attacks**. Our smart contract system protects users from being forced to release escrowed funds prematurely through innovative time-lock mechanisms and emergency intervention systems.
 
@@ -10,239 +10,321 @@ HCKM (Hackers.Market) implements the world's first anti-coercion P2P escrow prot
 
 Traditional P2P trading platforms fail when attackers gain physical control over victims. HCKM solves this through:
 
-- **Time-Locked Fund Release**: Mandatory waiting periods prevent immediate access
-- **Emergency Stop Mechanisms**: Panic code system for duress situations  
-- **Automated Dispute Resolution**: AI-driven pattern detection and intervention
-- **Decentralized Arbitration**: Community-based resolution for complex disputes
+- **⏰ Time-Locked Fund Release**: Mandatory waiting periods prevent immediate access
+- **🚨 Emergency Stop Mechanisms**: Panic code system for duress situations  
+- **⚖️ Automated Dispute Resolution**: Multi-tier arbitration system
+- **🏆 Reputation-Based Trust**: Cross-platform reputation scoring
 
-## 2. Contract Architecture
+## 2. 🏗️ Architecture
 
-### 2.1 Upgradeable Proxy Pattern Design
+### 2.1 Modular Upgradeable Design
 
-All core contracts implement OpenZeppelin's UUPS (Universal Upgradeable Proxy Standard) for future-proof upgradeability:
+All contracts implement OpenZeppelin's UUPS (Universal Upgradeable Proxy Standard) with a modular architecture:
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Proxy Layer   │────│ Implementation  │────│    Storage      │
-│                 │    │     Layer       │    │     Layer       │
-│ - UUPS Proxy    │    │ - Logic Code    │    │ - State Data    │
-│ - Upgrade Logic │    │ - Functions     │    │ - Mappings      │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+                    ┌─────────────────┐
+                    │  EscrowFactory  │
+                    │   (Upgradeable) │
+                    └────────┬────────┘
+                             │ deploys & manages
+                             ▼
+                    ┌────────────────────┐
+                    │EscrowImplementation│
+                    │  (Proxy instances) │
+                    └─────────┬──────────┘
+                              │ queries modules
+              ┌───────────────┼──────────────────┐
+              │               │                  │
+              ▼               ▼                  ▼
+    ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
+    │  TimeLockModule  │ │ EmergencyModule  │ │ DisputeResolver  │
+    │  (Upgradeable)   │ │  (Upgradeable)   │ │  (Upgradeable)   │
+    └──────────────────┘ └──────────────────┘ └──────────────────┘
+              │               │                  │
+              └───────────────┼──────────────────┘
+                              ▼
+                    ┌──────────────────┐
+                    │ ReputationOracle │
+                    │  (Upgradeable)   │
+                    └──────────────────┘
 ```
 
-### 2.2 Core Components
+### 2.2 Multi-Chain Strategy
 
-1. **EscrowFactory**: UUPS upgradeable factory deploying minimal proxy escrow instances
-2. **EscrowImplementation**: Individual escrow logic for each trade (pending implementation)
-3. **Modular Infrastructure**: Pluggable security and verification modules
-4. **CREATE3 Deployment**: Deterministic cross-chain addresses using Solady
+- **🌐 CREATE3 Deployment**: Same factory address across all chains
+- **⛓️ Cross-Chain Consistency**: Unified user experience across networks
+- **⛽ Gas Optimization**: Minimal proxy pattern reduces deployment costs
 
-### 2.3 Multi-Chain Strategy
+## 3. 📁 Project Structure
 
-- **Deterministic Deployment**: Same factory address across all chains via CREATE3
-- **Cross-Chain Consistency**: Unified user experience across networks
-- **Gas Optimization**: Minimal proxy pattern reduces deployment costs
-
-## 3. Deployed Contracts
-
-### 3.1 Core Contracts (Upgradeable)
-
-#### 3.1.1 EscrowFactory
-
-**Contract**: `contracts/core/EscrowFactory.sol`  
-**Interface**: `contracts/interfaces/IEscrowFactory.sol`
-
-The central factory contract responsible for deploying and managing escrow instances.
-
-##### 3.1.1.1 Key Features:
-- **UUPS Upgradeable Pattern** for future enhancements
-- **Minimal Proxy Deployment** for gas-efficient escrow creation
-- **Access Control** with OpenZeppelin's Ownable
-- **Pausable Operations** for emergency situations
-- **Reentrancy Protection** for secure state changes
-- **Comprehensive Error Handling** with custom errors
-
-##### 3.1.1.2 Public Interface:
-
-```solidity
-// Core Functions
-function createEscrow(CreateEscrowParams calldata params) external returns (address);
-function getSellerEscrows(address seller) external view returns (address[] memory);
-function getEscrowInfo(address escrow) external view returns (EscrowInfo memory);
-function escrowExists(address escrow) external view returns (bool);
-
-// Query Functions  
-function getSellerEscrowCount(address seller) external view returns (uint256);
-function getTotalEscrows() external view returns (uint256);
-function getEscrowByTradeId(bytes32 tradeId) external view returns (address);
-function getEscrowImplementation() external view returns (address);
-function getModule(string calldata moduleName) external view returns (address);
-function isPaused() external view returns (bool);
-function version() external pure returns (string memory);
-
-// Admin Functions (Owner Only)
-function updateEscrowImplementation(address newImplementation) external;
-function setModule(string calldata moduleName, address moduleAddress) external;
-function pause() external;
-function unpause() external;
+```
+contract/
+├── contracts/                          # Smart contract source code
+│   ├── core/                           # Core escrow contracts
+│   │   ├── EscrowFactory.sol           # Factory for creating escrows
+│   │   └── EscrowImplementation.sol    # Individual escrow logic
+│   ├── modules/                        # Security and utility modules
+│   │   ├── TimeLockModule.sol          # Anti-coercion time delays
+│   │   ├── EmergencyModule.sol         # Panic button functionality
+│   │   ├── DisputeResolver.sol         # Multi-tier dispute resolution
+│   │   └── ReputationOracle.sol        # Cross-platform reputation
+│   ├── interfaces/                     # Contract interfaces
+│   ├── deployment/                     # Deployment utilities
+│   │   └── CREATE3Deployer.sol         # Deterministic deployment
+│   └── test-helpers/                   # Testing utilities
+│
+├── test/                               # Comprehensive test suite
+│   ├── unit/                           # Unit tests for individual contracts
+│   ├── integration/                    # Integration tests for modules
+│   ├── functional/                     # End-to-end workflow tests
+│   ├── modules/                        # Module-specific tests
+│   └── helpers/                        # Test utilities and setup
+│
+├── scripts/                            # Deployment and utility scripts
+│   ├── 01_deploy_create3.ts            # Deploy CREATE3 factory
+│   ├── 02_deploy_contracts.ts          # Deploy main contracts
+│   ├── 03_verify_deployment.ts         # Verify deployment
+│   ├── 04_verify_crosschain.ts         # Cross-chain verification
+│   ├── deploy_multichain.sh            # Multi-chain deployment
+│   └── deploy_single.sh                # Single chain deployment
+│
+├── docs/                               # Documentation
+│   ├── DEPLOYMENT.md                   # Deployment guide
+│   └── MODULE_INTEGRATION_GUIDE.md     # Module integration guide
+│
+├── devdocs/                            # Development documentation
+│   ├── ContractDev.md                  # Contract development guide
+│   └── MainDevDoc.md                   # Main development documentation
+│
+└── deployments/                        # Deployment artifacts
 ```
 
-##### 3.1.1.3 Security Features:
-- **Contract Verification**: Validates implementation addresses using assembly
-- **Initialization Protection**: Try-catch mechanism for escrow initialization
-- **Duplicate Prevention**: Trade ID uniqueness enforcement
-- **Parameter Validation**: Comprehensive input sanitization
-- **Storage Gap**: 44 slots reserved for future upgrades
+## 4. 🔧 Core Contracts
 
-##### 3.1.1.4 Events:
-```solidity
-event EscrowCreated(address indexed escrow, address indexed seller, address indexed buyer, bytes32 tradeId, uint256 amount);
-event EscrowImplementationUpdated(address indexed oldImplementation, address indexed newImplementation);
-event ModuleUpdated(string moduleName, address indexed oldModule, address indexed newModule);
-event FactoryPaused(address indexed admin);
-event FactoryUnpaused(address indexed admin);
-```
+### 4.1 EscrowFactory (Upgradeable)
+**Path**: `contracts/core/EscrowFactory.sol`
 
-## 4. Data Structures
+Central factory contract responsible for deploying and managing escrow instances.
 
-### 4.1 Core Types
+**Key Features**:
+- ✅ UUPS Upgradeable Pattern
+- ✅ Minimal Proxy Deployment
+- ✅ Module Integration
+- ✅ Access Control & Pausable
+- ✅ Comprehensive Error Handling
 
-```solidity
-enum EscrowState {
-    Created,    // Escrow created but not funded
-    Funded,     // Buyer has funded the escrow
-    Locked,     // Time-lock period active
-    Released,   // Funds released to seller
-    Disputed,   // Dispute raised, awaiting resolution
-    Emergency,  // Emergency stop activated
-    Cancelled   // Escrow cancelled, funds returned
-}
+### 4.2 EscrowImplementation (Upgradeable)
+**Path**: `contracts/core/EscrowImplementation.sol`
 
-struct CreateEscrowParams {
-    address buyer;           // Buyer's address
-    uint256 amount;          // Escrow amount in wei
-    string description;      // Trade description
-    uint256 customTimeLock;  // Custom time-lock override (0 = use default)
-    bytes32 tradeId;        // Unique trade identifier
-}
+Individual escrow logic for each trade with full anti-coercion features.
 
-struct EscrowInfo {
-    address seller;          // Seller's address
-    address buyer;           // Buyer's address
-    uint256 amount;          // Escrow amount
-    EscrowState state;       // Current state
-    uint256 timeLockEnd;     // Time-lock expiration timestamp
-    string description;      // Trade description
-    bytes32 tradeId;        // Trade identifier
-    bool emergencyActive;    // Emergency stop status
-    uint256 createdAt;      // Creation timestamp
-    uint256 updatedAt;      // Last update timestamp
-}
-```
+**Key Features**:
+- ✅ Anti-coercion time locks
+- ✅ Emergency stop mechanisms
+- ✅ Dispute resolution integration
+- ✅ Reputation system integration
+- ✅ Reentrancy protection
 
-## 5. Development Setup
+### 4.3 Security Modules (All Upgradeable)
+
+#### 4.3.1 TimeLockModule
+**Path**: `contracts/modules/TimeLockModule.sol`
+- Calculates time-lock durations based on amount
+- Handles dispute extensions
+- Configurable parameters
+
+#### 4.3.2 EmergencyModule
+**Path**: `contracts/modules/EmergencyModule.sol`
+- Panic button functionality
+- Rate limiting and cooldowns
+- Security contact notifications
+
+#### 4.3.3 DisputeResolver
+**Path**: `contracts/modules/DisputeResolver.sol`
+- Multi-tier dispute resolution
+- Arbitrator consensus system
+- Automated fee calculations
+
+#### 4.3.4 ReputationOracle
+**Path**: `contracts/modules/ReputationOracle.sol`
+- Cross-platform reputation scoring
+- Dynamic score adjustments
+- Reputation decay mechanisms
+
+## 5. 🚀 Quick Start
 
 ### 5.1 Prerequisites
 - Node.js v18+
 - npm or yarn
-- Hardhat
+- Git
 
 ### 5.2 Installation
 
 ```bash
+# Clone the repository
+git clone <repository-url>
+cd contract
+
+# Install dependencies
 npm install
-```
 
-### 5.3 Key Dependencies
-- `@openzeppelin/contracts-upgradeable`: Upgradeable contract standards
-- `@openzeppelin/hardhat-upgrades`: Hardhat upgrade plugin  
-- `solady`: CREATE3 deterministic deployment
-- `@nomicfoundation/hardhat-toolbox`: Complete Hardhat toolkit
-
-### 5.4 Compilation
-
-```bash
+# Compile contracts
 npx hardhat compile
 ```
 
-### 5.5 Testing
+### 5.3 Testing
 
 ```bash
-npm test                    # Run all tests
+# Run all tests (168 tests passing)
+npm test
+
+# Run specific test suites
+npm run test:unit          # Unit tests
+npm run test:integration   # Integration tests
+npm run test:functional    # Functional tests
+
+# Coverage report
+npm run coverage
+```
+
+### 5.4 Local Development
+
+```bash
+# Start local hardhat node
+npx hardhat node
+
+# Deploy to local network
+npm run deploy:localhost
+```
+
+## 6. 🌐 Multi-Chain Deployment
+
+HCKM supports deployment across multiple testnets with deterministic addresses:
+
+### 6.1 Supported Networks
+- **Ethereum Sepolia** (Chain ID: 11155111)
+- **Base Sepolia** (Chain ID: 84532)
+- **Etherlink Testnet** (Chain ID: 128123)
+
+### 6.2 Deployment Commands
+
+```bash
+# Deploy to all networks
+./scripts/deploy_multichain.sh
+
+# Deploy to specific network
+./scripts/deploy_single.sh sepolia
+./scripts/deploy_single.sh baseSepolia
+./scripts/deploy_single.sh etherlinkTestnet
+
+# Verify cross-chain consistency
+npx hardhat run scripts/04_verify_crosschain.ts
+```
+
+### 6.3 Configuration
+
+Copy and configure environment variables:
+
+```bash
+cp .env.example .env
+# Edit .env with your private key and RPC URLs
+```
+
+## 7. 📊 Test Coverage
+
+The project maintains **comprehensive test coverage** with 168 passing tests:
+
+- **Unit Tests**: Individual contract functionality
+- **Integration Tests**: Module interactions
+- **Functional Tests**: End-to-end workflows
+- **Security Tests**: Attack scenarios and edge cases
+
+```bash
+# Latest test results
+✅ 168 tests passing
+❌ 0 tests failing  
+⏭️ 0 tests skipped
+```
+
+## 8. 🔒 Security Features
+
+### 8.1 Access Control
+- Owner-only admin functions
+- Module authorization system
+- Pausable operations for emergencies
+
+### 8.2 Anti-Coercion Mechanisms
+- Mandatory time-lock periods
+- Emergency stop with panic codes
+- Dispute extension during conflicts
+
+### 8.3 Upgrade Safety
+- UUPS pattern with authorization
+- Storage gap reservations
+- Initialization protection
+
+### 8.4 Gas Optimization
+- Minimal proxy deployment (~90% gas savings)
+- Packed storage layouts
+- Efficient state transitions
+
+## 9. 📚 Documentation
+
+- **[Deployment Guide](docs/DEPLOYMENT.md)**: Complete deployment instructions
+- **[Module Integration](docs/MODULE_INTEGRATION_GUIDE.md)**: Module architecture and integration
+
+## 10. 🛣️ Current Status
+
+### 10.1 ✅ Completed (Phase 1-2)
+- Core factory and implementation contracts
+- All four security modules implemented
+- Comprehensive testing suite (168 tests)
+- Multi-chain deployment infrastructure
+- CREATE3 deterministic deployment
+
+### 10.2 🔄 In Progress (Phase 3)
+- Mainnet deployment preparation
+- Security audit preparation
+- Frontend integration interfaces
+
+### 10.3 📋 Planned (Phase 4)
+- Advanced KYC integration
+- Cross-chain settlement
+- Insurance module integration
+- AI-powered dispute patterns
+
+## 11. 🔧 Development Commands
+
+```bash
+# Compilation
+npx hardhat compile
+
+# Testing
+npm test                   # All tests
 npm run test:unit          # Unit tests only
 npm run test:integration   # Integration tests only
-npm run coverage           # Test coverage report
-```
+npm run coverage           # Coverage report
 
-### 5.6 Deployment
-
-```bash
+# Deployment
 npm run deploy:localhost   # Local deployment
 npm run deploy:testnet     # Testnet deployment
-npm run deploy:mainnet     # Mainnet deployment
+
+# Utilities
+npx hardhat clean          # Clean artifacts
+npx hardhat typechain      # Generate TypeScript types
 ```
 
-## 6. Technical Specifications
 
-### 6.1 Security Standards
-- **Solidity**: ^0.8.20
-- **OpenZeppelin**: Upgradeable contracts v5.4.0
-- **Audit Requirements**: Comprehensive security audit mandatory before mainnet
-- **Test Coverage**: >90% required for all contracts
-- **Formal Verification**: Recommended for critical functions
-
-### 6.2 Gas Optimization
-- **Minimal Proxy Pattern**: ~90% gas savings on escrow deployment
-- **Packed Storage**: Optimized struct layouts for reduced storage costs
-- **Batch Operations**: Multiple actions in single transaction where possible
-- **Efficient State Transitions**: Minimized storage writes per operation
-
-### 6.3 Upgrade Safety
-- **UUPS Pattern**: Gas-efficient upgrades with built-in authorization
-- **Storage Gaps**: Reserved slots prevent storage collisions
-- **Initialization Guards**: Prevent double initialization attacks
-- **Access Control**: Multi-signature requirements for critical upgrades
-
-## 7. Roadmap
-
-### 7.1 Phase 1: Factory Infrastructure (Current)
-- [x] Core interfaces and data structures
-- [x] EscrowFactory upgradeable contract
-- [x] Security audit and testing framework
-- [x] CREATE3 deployment strategy
-
-### 7.2 Phase 2: Escrow Implementation (In Progress)
-- [ ] EscrowImplementation contract
-- [ ] TimeLockModule for anti-coercion delays
-- [ ] EmergencyModule for panic button functionality
-- [ ] Basic dispute resolution mechanism
-
-### 7.3 Phase 3: Advanced Security Modules
-- [ ] KYCModule with multi-DID integration
-- [ ] ReputationOracle for cross-platform scoring
-- [ ] Advanced dispute resolution with AI patterns
-- [ ] Insurance integration modules
-
-### 7.4 Phase 4: External Integrations
-- [ ] 1inch Fusion+ integration for optimal swaps
-- [ ] Circle USDC/EURC multi-chain support
-- [ ] LayerZero OFT for governance token
-- [ ] Cross-chain settlement mechanisms
-
-## 8. Security Considerations
-
-### 8.1 Audited Components
-- **EscrowFactory**: Core factory logic and upgradeability
-- **Access Controls**: Admin function security (pending implementation review)
-- **Proxy Safety**: UUPS upgrade mechanisms (pending audit)
-
-### 8.2 Known Limitations (Pre-Implementation)
-- EscrowImplementation contract not yet implemented
-- Module system architecture in development
-- Cross-chain functionality pending LayerZero integration
-
-## 9. License
+## 12. 📄 License
 
 MIT License - see [LICENSE](../LICENSE) for details.
 
+## 13. 🔗 Links
+
+- **Repository**: [GitHub](https://github.com/HCKM-Team/Hackers.Market-MVP-for-unite-defi)
+- **Documentation**: [HCKM Docs](https://docs.hackers.market) *(in development)*
+- **Website**: [Hackers.Market](https://hackers.market) *(coming soon)*
+
 ---
+
+**Built with ❤️ for safer P2P trading**
