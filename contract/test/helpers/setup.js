@@ -7,14 +7,16 @@ const { expect } = require("chai");
  */
 
 class TestSetup {
-  constructor() {
+  constructor(options = {}) {
     this.accounts = {};
     this.contracts = {};
     this.config = {
       creationFee: ethers.parseEther("0.0008"),
       defaultAmount: ethers.parseEther("1.0"),
       emergencyHash: ethers.id("emergency123"),
-      panicCode: "emergency123"
+      panicCode: "emergency123",
+      useCREATE3: options.useCREATE3 || false, // Enable CREATE3 for cross-chain consistency
+      saltPrefix: options.saltPrefix || "HCKM_TEST_" // Salt prefix for deterministic addresses
     };
   }
 
@@ -42,6 +44,17 @@ class TestSetup {
   async deployContracts() {
     await this.setupAccounts();
     
+    if (this.config.useCREATE3) {
+      return this._deployWithCREATE3();
+    } else {
+      return this._deployStandard();
+    }
+  }
+
+  /**
+   * Standard deployment for testing (faster and simpler)
+   */
+  async _deployStandard() {
     // 1. Deploy TimeLockModule
     const TimeLockModule = await ethers.getContractFactory("TimeLockModule");
     const timeLock = await upgrades.deployProxy(TimeLockModule, [this.accounts.owner.address]);
@@ -81,6 +94,62 @@ class TestSetup {
       emergency,
       implementation,
       factory
+    };
+    
+    return this.contracts;
+  }
+
+  /**
+   * CREATE3 deployment for cross-chain consistency
+   */
+  async _deployWithCREATE3() {
+    // 1. Deploy CREATE3Deployer first
+    const CREATE3Deployer = await ethers.getContractFactory("CREATE3Deployer");
+    const deployer = await CREATE3Deployer.deploy(this.accounts.owner.address);
+    await deployer.waitForDeployment();
+    
+    // 2. Deploy EscrowImplementation with CREATE3
+    const implSalt = ethers.id(this.config.saltPrefix + "IMPLEMENTATION");
+    const implementationTx = await deployer.deployEscrowImplementation(implSalt);
+    await implementationTx.wait();
+    const implementationAddress = await deployer.getDeployedAddress(implSalt);
+    const implementation = await ethers.getContractAt("EscrowImplementation", implementationAddress);
+    
+    // 3. Deploy modules using standard proxy (since they need upgradeability)
+    // Note: For production, these could also use CREATE3 with custom proxy deployment
+    const TimeLockModule = await ethers.getContractFactory("TimeLockModule");
+    const timeLock = await upgrades.deployProxy(TimeLockModule, [this.accounts.owner.address]);
+    await timeLock.waitForDeployment();
+    
+    const EmergencyModule = await ethers.getContractFactory("EmergencyModule");
+    const emergency = await upgrades.deployProxy(EmergencyModule, [this.accounts.owner.address]);
+    await emergency.waitForDeployment();
+    
+    // 4. Deploy EscrowFactory using standard proxy (points to CREATE3 implementation)
+    const EscrowFactory = await ethers.getContractFactory("EscrowFactory");
+    const factory = await upgrades.deployProxy(EscrowFactory, [
+      implementationAddress,
+      this.accounts.owner.address
+    ]);
+    await factory.waitForDeployment();
+    
+    // 5. Register modules in factory
+    await factory.setModule("TimeLock", await timeLock.getAddress());
+    await factory.setModule("Emergency", await emergency.getAddress());
+    
+    // 6. Authorize factory in modules
+    await timeLock.setAuthorizedCaller(await factory.getAddress(), true);
+    await emergency.setAuthorizedCaller(await factory.getAddress(), true);
+    
+    // 7. Add security contact
+    await emergency.addSecurityContact(this.accounts.security.address);
+    
+    this.contracts = {
+      timeLock,
+      emergency,
+      implementation,
+      factory,
+      deployer // Include deployer for reference
     };
     
     return this.contracts;
