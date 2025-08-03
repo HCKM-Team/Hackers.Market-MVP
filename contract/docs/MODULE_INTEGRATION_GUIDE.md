@@ -6,31 +6,31 @@ This guide explains how all four modules (TimeLockModule, EmergencyModule, Dispu
 ## Architecture
 
 ```
-┌─────────────────┐
-│  EscrowFactory  │
-│   (Upgradeable) │
-└────────┬────────┘
-         │ deploys & manages
-         ▼
-┌─────────────────┐      queries modules      ┌──────────────────┐
-│EscrowImplementation│◄──────────────────────►│  TimeLockModule  │
-│  (Proxy instances) │                         │  (Upgradeable)   │
-└─────────────────┘                           └──────────────────┘
-         ▲                                              
-         │ queries modules                     ┌──────────────────┐
-         ├────────────────────────────────────►│ EmergencyModule  │
-         │                                    │  (Upgradeable)   │
-         │                                    └──────────────────┘
-         │                                              
-         │                                    ┌──────────────────┐
-         ├────────────────────────────────────►│ DisputeResolver  │
-         │                                    │  (Upgradeable)   │
-         │                                    └──────────────────┘
-         │                                              
-         │                                    ┌──────────────────┐
-         └────────────────────────────────────►│ ReputationOracle │
-                                               │  (Upgradeable)   │
-                                               └──────────────────┘
+                    ┌─────────────────┐
+                    │  EscrowFactory  │
+                    │   (Upgradeable) │
+                    └────────┬────────┘
+                             │ deploys & manages
+                             ▼
+                    ┌────────────────────┐
+                    │EscrowImplementation│
+                    │  (Proxy instances) │
+                    └─────────┬──────────┘
+                              │ queries modules
+              ┌───────────────┼──────────────────┐
+              │               │                  │
+              ▼               ▼                  ▼
+    ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
+    │  TimeLockModule  │ │ EmergencyModule  │ │ DisputeResolver  │
+    │  (Upgradeable)   │ │  (Upgradeable)   │ │  (Upgradeable)   │
+    └──────────────────┘ └──────────────────┘ └──────────────────┘
+              │               │                  │
+              └───────────────┼──────────────────┘
+                              ▼
+                    ┌──────────────────┐
+                    │ ReputationOracle │
+                    │  (Upgradeable)   │
+                    └──────────────────┘
 ```
 
 ## Integration Flow
