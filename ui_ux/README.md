@@ -41,7 +41,9 @@ The platform supports three main asset categories:
 2. **Selling Flow**  
 3. **Buying Flow**
 
-**Detailed Documentation**: [User Flow Document](https://docs.google.com/document/d/1nELyVpkfoj4dwnnnfxvsjFTJ_hZ4zdhdkbDCQMKEuE4/edit?usp=sharing)
+**Detailed Documentation**: 
+- [Original User Flow Document](docs/UserFlowDoc.md)
+- [Revised User Flow Document](https://docs.google.com/document/d/1nELyVpkfoj4dwnnnfxvsjFTJ_hZ4zdhdkbDCQMKEuE4/edit?usp=sharing)
 
 ### 2.4 Phase 4: Landing Page Development
 - **First Milestone**: Draft landing page completed
