@@ -22,6 +22,7 @@
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0",
     "@openzeppelin/contracts-upgradeable": "^5.4.0",
+    "dotenv": "^17.2.1",
     "solady": "^0.1.24"
   }
 }
