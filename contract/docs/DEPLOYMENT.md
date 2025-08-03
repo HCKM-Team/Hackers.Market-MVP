@@ -228,8 +228,8 @@ After successful deployment:
 ## Contact & Support
 
 For deployment issues or questions:
-- GitHub: [HCKM Repository](https://github.com/your-repo)
-- Documentation: [HCKM Docs](https://docs.hackers.market)
+- GitHub: [HCKM-MVP Repository](https://github.com/HCKM-Team/Hackers.Market-MVP-for-unite-defi)
+- Documentation: [HCKM Docs (in development)](https://docs.hackers.market)
 
 ## License
 
