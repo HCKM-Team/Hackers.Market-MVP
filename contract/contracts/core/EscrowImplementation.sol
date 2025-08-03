@@ -5,6 +5,8 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "../interfaces/IEscrow.sol";
 import "../interfaces/IEscrowFactory.sol";
+import "../interfaces/ITimeLockModule.sol";
+import "../interfaces/IEmergencyModule.sol";
 
 /**
  * @title EscrowImplementation
@@ -49,14 +51,8 @@ contract EscrowImplementation is
     /// @dev Time-lock end timestamp (when funds can be released)
     uint256 private _timeLockEnd;
     
-    /// @dev Default time-lock duration (24 hours)
-    uint256 private constant DEFAULT_TIMELOCK = 24 hours;
-    
-    /// @dev Minimum time-lock duration (1 hour)
-    uint256 private constant MIN_TIMELOCK = 1 hours;
-    
-    /// @dev Maximum time-lock duration (7 days)
-    uint256 private constant MAX_TIMELOCK = 7 days;
+    /// @dev Custom time-lock override (0 = use module calculation)
+    uint256 private _customTimeLock;
     
     /// @dev Emergency hash for panic button activation
     bytes32 private _emergencyHash;
@@ -150,16 +146,9 @@ contract EscrowImplementation is
         _state = EscrowState.Created;
         _createdAt = block.timestamp;
         _updatedAt = block.timestamp;
+        _customTimeLock = customTimeLock_;
         
-        // Set time-lock duration
-        if (customTimeLock_ > 0) {
-            if (customTimeLock_ < MIN_TIMELOCK || customTimeLock_ > MAX_TIMELOCK) {
-                revert InvalidAmount();
-            }
-            _timeLockEnd = customTimeLock_;
-        } else {
-            _timeLockEnd = DEFAULT_TIMELOCK;
-        }
+        // Time-lock will be calculated when transitioning to Locked state
     }
     
     // === Core Functions ===
@@ -199,7 +188,10 @@ contract EscrowImplementation is
         notInEmergency
     {
         _state = EscrowState.Locked;
-        _timeLockEnd = block.timestamp + _timeLockEnd; // Convert duration to timestamp
+        
+        // Calculate time-lock using module or custom duration
+        uint256 lockDuration = _calculateTimeLock();
+        _timeLockEnd = block.timestamp + lockDuration;
         _updatedAt = block.timestamp;
         
         emit StateChanged(EscrowState.Funded, EscrowState.Locked);
@@ -252,16 +244,20 @@ contract EscrowImplementation is
         }
         
         _emergencyActive = true;
+        EscrowState previousState = _state;
         _state = EscrowState.Emergency;
         _updatedAt = block.timestamp;
         
-        // Extend time-lock by 48 hours for investigation
-        uint256 extension = 48 hours;
-        if (_state == EscrowState.Locked) {
+        // Get extension from EmergencyModule if available
+        uint256 extension = _getEmergencyExtension();
+        if (previousState == EscrowState.Locked) {
             _timeLockEnd += extension;
         } else {
             _timeLockEnd = block.timestamp + extension;
         }
+        
+        // Notify EmergencyModule if available
+        _notifyEmergencyModule(panicCode);
         
         _emergencyData = EmergencyData({
             activator: msg.sender,
@@ -271,7 +267,7 @@ contract EscrowImplementation is
         });
         
         emit EmergencyActivated(msg.sender, extension);
-        emit StateChanged(_state, EscrowState.Emergency);
+        emit StateChanged(previousState, EscrowState.Emergency);
         emit TimeLockUpdated(_timeLockEnd);
     }
     
@@ -293,11 +289,12 @@ contract EscrowImplementation is
         _state = EscrowState.Disputed;
         _updatedAt = block.timestamp;
         
-        // Extend time-lock for dispute resolution
+        // Get dispute extension from module if available
+        uint256 disputeExtension = _getDisputeExtension();
         if (_state == EscrowState.Locked) {
-            _timeLockEnd += 72 hours;
+            _timeLockEnd += disputeExtension;
         } else {
-            _timeLockEnd = block.timestamp + 72 hours;
+            _timeLockEnd = block.timestamp + disputeExtension;
         }
         
         _disputeInfo = DisputeInfo({
@@ -435,4 +432,97 @@ contract EscrowImplementation is
      * @dev Receive function to accept ETH
      */
     receive() external payable {}
+    
+    // === Internal Module Integration Functions ===
+    
+    /**
+     * @dev Calculate time-lock duration using TimeLockModule
+     */
+    function _calculateTimeLock() internal view returns (uint256) {
+        // If custom time-lock is set, use it
+        if (_customTimeLock > 0) {
+            return _customTimeLock;
+        }
+        
+        // Try to get TimeLockModule from factory
+        try IEscrowFactory(_factory).getModule("TimeLock") returns (address moduleAddr) {
+            if (moduleAddr != address(0)) {
+                // Use simplified calculation based on amount
+                try ITimeLockModule(moduleAddr).getTimeLockForAmount(_amount) returns (uint256 duration) {
+                    return duration;
+                } catch {
+                    // Fallback to default
+                }
+            }
+        } catch {
+            // Factory doesn't support modules or module not set
+        }
+        
+        // Fallback to default 24 hours
+        return 24 hours;
+    }
+    
+    /**
+     * @dev Get emergency extension from EmergencyModule
+     */
+    function _getEmergencyExtension() internal view returns (uint256) {
+        // Try to get EmergencyModule from factory
+        try IEscrowFactory(_factory).getModule("Emergency") returns (address moduleAddr) {
+            if (moduleAddr != address(0)) {
+                try IEmergencyModule(moduleAddr).calculateLockExtension(address(this)) returns (uint256 extension) {
+                    return extension;
+                } catch {
+                    // Fallback to default
+                }
+            }
+        } catch {
+            // Factory doesn't support modules or module not set
+        }
+        
+        // Fallback to 48 hours
+        return 48 hours;
+    }
+    
+    /**
+     * @dev Get dispute extension from TimeLockModule
+     */
+    function _getDisputeExtension() internal view returns (uint256) {
+        // Try to get TimeLockModule from factory
+        try IEscrowFactory(_factory).getModule("TimeLock") returns (address moduleAddr) {
+            if (moduleAddr != address(0)) {
+                try ITimeLockModule(moduleAddr).getDisputeExtension() returns (uint256 extension) {
+                    return extension;
+                } catch {
+                    // Fallback to default
+                }
+            }
+        } catch {
+            // Factory doesn't support modules or module not set
+        }
+        
+        // Fallback to 72 hours
+        return 72 hours;
+    }
+    
+    /**
+     * @dev Notify EmergencyModule about panic activation
+     */
+    function _notifyEmergencyModule(string calldata panicCode) internal {
+        // Try to get EmergencyModule from factory
+        try IEscrowFactory(_factory).getModule("Emergency") returns (address moduleAddr) {
+            if (moduleAddr != address(0)) {
+                try IEmergencyModule(moduleAddr).activateEmergency(
+                    address(this),
+                    keccak256(abi.encodePacked(panicCode)),
+                    "Panic button activated"
+                ) {
+                    // Successfully notified
+                } catch {
+                    // Module notification failed, but don't revert
+                }
+            }
+        } catch {
+            // Factory doesn't support modules or module not set
+        }
+    }
 }
