@@ -39,7 +39,7 @@ describe("Module Integration", function () {
       
       // Check that escrow uses module-calculated duration
       const escrowInfo = await escrow.getEscrowInfo();
-      const actualDuration = escrowInfo.timeLockEnd - blockTime;
+      const actualDuration = Number(escrowInfo.timeLockEnd) - blockTime;
       
       expect(actualDuration).to.be.closeTo(Number(expectedDuration), 5); // 5 second tolerance
     });
@@ -58,7 +58,7 @@ describe("Module Integration", function () {
       
       // Should use default 24 hours
       const escrowInfo = await newEscrow.getEscrowInfo();
-      const duration = escrowInfo.timeLockEnd - blockTime;
+      const duration = Number(escrowInfo.timeLockEnd) - blockTime;
       
       expect(duration).to.be.closeTo(24 * TIME.HOUR, 5);
     });
@@ -76,7 +76,7 @@ describe("Module Integration", function () {
       const blockTime = (await ethers.provider.getBlock(receipt.blockNumber)).timestamp;
       
       const escrowInfo = await result.escrow.getEscrowInfo();
-      const actualDuration = escrowInfo.timeLockEnd - blockTime;
+      const actualDuration = Number(escrowInfo.timeLockEnd) - blockTime;
       
       expect(actualDuration).to.be.closeTo(customDuration, 5);
     });
@@ -89,11 +89,11 @@ describe("Module Integration", function () {
       await escrow.connect(buyer).raiseDispute("Test dispute");
       
       const timeLockAfter = await escrow.getTimeLockRemaining();
-      const extension = timeLockAfter - timeLockBefore;
+      const extension = Number(timeLockAfter - timeLockBefore);
       
-      // Should match module's dispute extension
-      const moduleExtension = await timeLock.getDisputeExtension();
-      expect(extension).to.be.closeTo(moduleExtension, 5);
+      // Should match module's dispute extension (72 hours = 259200 seconds)
+      const moduleExtension = Number(await timeLock.getDisputeExtension());
+      expect(extension).to.be.closeTo(moduleExtension, 5); // Allow 5 second tolerance for timing
     });
 
     it("Should handle different amount tiers", async function () {
@@ -114,7 +114,7 @@ describe("Module Integration", function () {
         const blockTime = (await ethers.provider.getBlock(receipt.blockNumber)).timestamp;
         
         const escrowInfo = await result.escrow.getEscrowInfo();
-        const actualDuration = escrowInfo.timeLockEnd - blockTime;
+        const actualDuration = Number(escrowInfo.timeLockEnd) - blockTime;
         
         expect(actualDuration).to.be.closeTo(Number(expectedDuration), 5);
       }
@@ -136,12 +136,12 @@ describe("Module Integration", function () {
       setup.expectEvent(receipt, "EmergencyActivated");
       
       // Check if emergency is recorded in module
-      const isActive = await emergency.isEmergencyActive(escrow.address);
+      const isActive = await emergency.isEmergencyActive(await escrow.getAddress());
       expect(isActive).to.be.true;
       
-      const record = await emergency.getEmergencyRecord(escrow.address);
+      const record = await emergency.getEmergencyRecord(await escrow.getAddress());
       expect(record.activator).to.equal(buyer.address);
-      expect(record.escrow).to.equal(escrow.address);
+      expect(record.escrow).to.equal(await escrow.getAddress());
       expect(record.isActive).to.be.true;
     });
 
@@ -150,7 +150,7 @@ describe("Module Integration", function () {
       await escrow.connect(buyer).emergencyStop(setup.config.panicCode);
       
       const remaining = await escrow.getTimeLockRemaining();
-      const moduleExtension = await emergency.calculateLockExtension(escrow.address);
+      const moduleExtension = await emergency.calculateLockExtension(await escrow.getAddress());
       
       // Should use module-calculated extension
       expect(Number(remaining)).to.be.closeTo(Number(moduleExtension), TIME.HOUR);
@@ -166,7 +166,7 @@ describe("Module Integration", function () {
       // Should fail due to cooldown
       await expect(
         result2.escrow.connect(buyer).emergencyStop(setup.config.panicCode)
-      ).to.be.revertedWith("CooldownPeriodActive");
+      ).to.be.revertedWithCustomError(emergency, "CooldownPeriodActive");
     });
 
     it("Should enforce daily activation limits", async function () {
@@ -185,7 +185,7 @@ describe("Module Integration", function () {
       const finalResult = await setup.createAndFundEscrow();
       await expect(
         finalResult.escrow.connect(buyer).emergencyStop(setup.config.panicCode)
-      ).to.be.revertedWith("MaxActivationsReached");
+      ).to.be.revertedWithCustomError(emergency, "MaxActivationsReached");
     });
 
     it("Should fall back to default when module unavailable", async function () {
@@ -210,12 +210,12 @@ describe("Module Integration", function () {
       
       // Security resolves
       await emergency.connect(security).resolveEmergency(
-        escrow.address,
+        await escrow.getAddress(),
         "False alarm - resolved"
       );
       
       // Should be marked as resolved in module
-      const record = await emergency.getEmergencyRecord(escrow.address);
+      const record = await emergency.getEmergencyRecord(await escrow.getAddress());
       expect(record.isActive).to.be.false;
       expect(record.resolvedAt).to.be.gt(0);
     });
@@ -270,7 +270,7 @@ describe("Module Integration", function () {
           emergencyExtension: 48 * TIME.HOUR,
           disputeExtension: 72 * TIME.HOUR
         })
-      ).to.be.revertedWith("InvalidConfiguration");
+      ).to.be.revertedWithCustomError(timeLock, "InvalidConfiguration");
 
       // Invalid Emergency config
       await expect(
@@ -281,7 +281,7 @@ describe("Module Integration", function () {
           autoLockEnabled: true,
           lockExtension: 48 * TIME.HOUR
         })
-      ).to.be.revertedWith("InvalidConfiguration");
+      ).to.be.revertedWithCustomError(emergency, "InvalidConfiguration");
     });
   });
 
@@ -312,11 +312,13 @@ describe("Module Integration", function () {
     it("Should not allow non-owner to change authorization", async function () {
       await expect(
         timeLock.connect(buyer).setAuthorizedCaller(buyer.address, true)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWithCustomError(timeLock, "OwnableUnauthorizedAccount")
+        .withArgs(buyer.address);
       
       await expect(
         emergency.connect(seller).setAuthorizedCaller(seller.address, true)
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      ).to.be.revertedWithCustomError(emergency, "OwnableUnauthorizedAccount")
+        .withArgs(seller.address);
     });
   });
 

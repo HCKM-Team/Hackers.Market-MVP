@@ -93,12 +93,14 @@ interface IEmergencyModule {
     /**
      * @dev Activate emergency for an escrow
      * @param escrow Escrow contract address
+     * @param activator Address of the user who activated the emergency
      * @param codeHash Hash of the panic code
      * @param reason Optional reason for activation
      * @return success True if activation successful
      */
     function activateEmergency(
         address escrow,
+        address activator,
         bytes32 codeHash,
         string calldata reason
     ) external returns (bool success);

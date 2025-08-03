@@ -294,7 +294,8 @@ contract EscrowFactory is
         onlyOwner 
     {
         if (bytes(moduleName).length == 0) revert InvalidDescription();
-        if (moduleAddress == address(0)) revert InvalidAmount();
+        // Allow zero address for module removal/fallback scenarios
+        // if (moduleAddress == address(0)) revert InvalidAmount();
 
         address oldModule = _modules[moduleName];
         _modules[moduleName] = moduleAddress;

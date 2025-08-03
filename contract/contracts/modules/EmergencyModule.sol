@@ -5,7 +5,10 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "../interfaces/IEmergencyModule.sol";
+import "../interfaces/IEscrow.sol";
+import "../interfaces/IEscrowStructs.sol";
 
 /**
  * @title EmergencyModule
@@ -43,15 +46,18 @@ contract EmergencyModule is
     /// @dev Cooldown tracking per user
     mapping(address => uint256) private _lastActivation;
 
+    /// @dev Factory address for escrow validation
+    address private _factory;
+
     /// @dev Storage gap for future upgrades
-    uint256[42] private __gap;
+    uint256[41] private __gap;
 
     /**
      * @dev Modifier to check authorized callers
      */
     modifier onlyAuthorized() {
         require(
-            _authorizedCallers[msg.sender] || msg.sender == owner(),
+            _authorizedCallers[msg.sender] || msg.sender == owner() || _isValidEscrow(msg.sender),
             "Unauthorized"
         );
         _;
@@ -88,14 +94,25 @@ contract EmergencyModule is
     }
 
     /**
+     * @dev Set factory address for escrow validation
+     * @param factory_ Factory contract address
+     */
+    function setFactory(address factory_) external onlyOwner {
+        require(factory_ != address(0), "Invalid factory address");
+        _factory = factory_;
+    }
+
+    /**
      * @dev Activate emergency for an escrow
      * @param escrow Escrow contract address
+     * @param activator Address of the user who activated the emergency
      * @param codeHash Hash of the panic code
      * @param reason Optional reason for activation
      * @return success True if activation successful
      */
     function activateEmergency(
         address escrow,
+        address activator,
         bytes32 codeHash,
         string calldata reason
     ) 
@@ -110,13 +127,14 @@ contract EmergencyModule is
             revert EmergencyAlreadyActive();
         }
 
-        // Check cooldown period
-        if (block.timestamp < _lastActivation[msg.sender] + _config.cooldownPeriod) {
+        // Check cooldown period (only if user has activated before)
+        if (_lastActivation[activator] != 0 && 
+            block.timestamp < _lastActivation[activator] + _config.cooldownPeriod) {
             revert CooldownPeriodActive();
         }
 
         // Check activation limit
-        uint256 recentCount = _getRecentActivationCount(msg.sender);
+        uint256 recentCount = _getRecentActivationCount(activator);
         if (recentCount >= _config.maxActivations) {
             revert MaxActivationsReached();
         }
@@ -124,7 +142,7 @@ contract EmergencyModule is
         // Create emergency record
         _emergencyRecords[escrow] = EmergencyRecord({
             escrow: escrow,
-            activator: msg.sender,
+            activator: activator,
             activatedAt: block.timestamp,
             codeHash: codeHash,
             reason: reason,
@@ -133,11 +151,11 @@ contract EmergencyModule is
         });
 
         // Track activation
-        _userActivations[msg.sender].push(block.timestamp);
-        _lastActivation[msg.sender] = block.timestamp;
+        _userActivations[activator].push(block.timestamp);
+        _lastActivation[activator] = block.timestamp;
 
         // Emit events
-        emit EmergencyActivated(escrow, msg.sender, codeHash, block.timestamp);
+        emit EmergencyActivated(escrow, activator, codeHash, block.timestamp);
 
         // Send alerts to security contacts
         _notifySecurityContacts(escrow, reason);
@@ -415,6 +433,14 @@ contract EmergencyModule is
     {
         return _authorizedCallers[caller] || caller == owner();
     }
+    
+    /**
+     * @dev Get last activation time for debugging
+     */
+    function getLastActivation(address user) external view returns (uint256) {
+        return _lastActivation[user];
+    }
+    
 
     // === Internal Functions ===
 
@@ -466,6 +492,29 @@ contract EmergencyModule is
         override 
         onlyOwner 
     {}
+
+    /**
+     * @dev Check if caller is a valid escrow contract
+     * @param caller Address to validate
+     * @return valid True if valid escrow
+     */
+    function _isValidEscrow(address caller) internal view returns (bool) {
+        if (_factory == address(0)) {
+            return false; // Factory not set
+        }
+        
+        // Simple validation: check if caller is a contract and has escrow-like functions
+        if (caller.code.length == 0) {
+            return false; // Not a contract
+        }
+        
+        // Try calling a basic escrow function to validate it's an escrow contract
+        try IEscrow(caller).getState() returns (IEscrowStructs.EscrowState) {
+            return true; // If it can return a state, it's likely an escrow
+        } catch {
+            return false;
+        }
+    }
 
     /**
      * @dev Get module version

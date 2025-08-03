@@ -86,6 +86,9 @@ class TestSetup {
     await timeLock.setAuthorizedCaller(await factory.getAddress(), true);
     await emergency.setAuthorizedCaller(await factory.getAddress(), true);
     
+    // Set factory address in emergency module for escrow validation
+    await emergency.setFactory(await factory.getAddress());
+    
     // 7. Add security contact
     await emergency.addSecurityContact(this.accounts.security.address);
     
@@ -140,6 +143,9 @@ class TestSetup {
     // 6. Authorize factory in modules
     await timeLock.setAuthorizedCaller(await factory.getAddress(), true);
     await emergency.setAuthorizedCaller(await factory.getAddress(), true);
+    
+    // Set factory address in emergency module for escrow validation
+    await emergency.setFactory(await factory.getAddress());
     
     // 7. Add security contact
     await emergency.addSecurityContact(this.accounts.security.address);
@@ -200,7 +206,7 @@ class TestSetup {
    * Fund an escrow (buyer action)
    */
   async fundEscrow(escrow, amount = null, emergencyHash = null) {
-    const fundAmount = amount || this.config.defaultAmount;
+    const fundAmount = amount || await escrow.getAmount();
     const hash = emergencyHash || this.config.emergencyHash;
     
     const tx = await escrow
