@@ -25,7 +25,7 @@ Hackers.Market-MVP-for-unite-defi/
 ├── frontend/          # Next.js 14 application
 ├── backend/           # Node.js API services
 ├── contracts/         # Smart contracts (Solidity)
-└── assets/            # UI/UX design files
+└── ui_ux/             # UI/UX design files
 ```
 
 ### 1.4 🛠️ Tech Stack
@@ -40,7 +40,7 @@ Hackers.Market-MVP-for-unite-defi/
 - **Figjam UX**: [HCKM UX Flow](https://www.figma.com/board/WFS5AJbVCUNZUz7MOGwUjT/HCKM-UX?node-id=12-2&t=HMj8wi1bkJ7Qg2uf-1)
 
 ### 1.6 📄 License
-MIT License
+[Business Source License 1.1](https://spdx.org/licenses/BUSL-1.1.html)
 
 ---
 
@@ -63,7 +63,7 @@ Hackers.Market-MVP-for-unite-defi/
 ├── frontend/          # Next.js 14 Web應用
 ├── backend/           # Node.js API 服務
 ├── contracts/         # 智能合約 (Solidity)
-└── assets/            # UI/UX 設計檔
+└── ui_ux/             # UI/UX 設計檔
 ```
 
 ### 2.4 🛠️ 技術棧
@@ -77,5 +77,5 @@ Hackers.Market-MVP-for-unite-defi/
 - **Figma 設計檔案**: [HCKM UI 設計](https://www.figma.com/design/iRl2Lpq1k7n3eHVl8VNqqp/HCKM-UI?node-id=21-3&t=2xeAe8Tbpvn9bbHv-1)
 - **Figjam UX**: [HCKM UX 流程圖](https://www.figma.com/board/WFS5AJbVCUNZUz7MOGwUjT/HCKM-UX?node-id=12-2&t=HMj8wi1bkJ7Qg2uf-1)
 
-### 2.6 📄 開源許可證
-MIT 許可證
+### 2.6 📄 許可證
+[Business Source License 1.1](https://spdx.org/licenses/BUSL-1.1.html)
