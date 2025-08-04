@@ -40,7 +40,7 @@ Hackers.Market-MVP-for-unite-defi/
 - **Figjam UX**: [HCKM UX Flow](https://www.figma.com/board/WFS5AJbVCUNZUz7MOGwUjT/HCKM-UX?node-id=12-2&t=HMj8wi1bkJ7Qg2uf-1)
 
 ### 1.6 📄 License
-[Business Source License 1.1](https://spdx.org/licenses/BUSL-1.1.html)
+- [Business Source License 1.1](https://spdx.org/licenses/BUSL-1.1.html)
 
 ---
 
@@ -78,4 +78,4 @@ Hackers.Market-MVP-for-unite-defi/
 - **Figjam UX**: [HCKM UX 流程圖](https://www.figma.com/board/WFS5AJbVCUNZUz7MOGwUjT/HCKM-UX?node-id=12-2&t=HMj8wi1bkJ7Qg2uf-1)
 
 ### 2.6 📄 許可證
-[Business Source License 1.1](https://spdx.org/licenses/BUSL-1.1.html)
+- [Business Source License 1.1](https://spdx.org/licenses/BUSL-1.1.html)
